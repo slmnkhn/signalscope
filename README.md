@@ -2,6 +2,8 @@
 
 **See every layer of a live video feed.**
 
+![SignalScope report: health banner, spec conformance table, picture, SRT link and transport stream details](docs/screenshot.jpg)
+
 SignalScope is a live feed inspector for video and broadcast engineers. Point it at a live feed (SRT, HLS
 or UDP) and within about half a minute it tells you everything about that feed: how healthy the network link
 is, how the stream is packed, the exact video and audio settings, whether captions and ad markers are present,
