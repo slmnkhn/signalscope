@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>SignalScope</title>
+<style>
+  :root {
+    --bg: #f7f6f3; --card: #fff; --ink: #1c1917; --muted: #6b6560; --line: #e7e5e4;
+    --accent: #4f46e5; --accent-soft: #eef2ff;
+    --green: #15803d; --green-soft: #dcfce7; --yellow: #a16207; --yellow-soft: #fef9c3; --red: #b91c1c; --red-soft: #fee2e2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f0e0d; --card: #1a1817; --ink: #f5f5f4; --muted: #a8a29e; --line: #2a2725;
+      --accent: #818cf8; --accent-soft: #1e1b4b;
+      --green: #4ade80; --green-soft: #052e16; --yellow: #facc15; --yellow-soft: #3a2a05; --red: #f87171; --red-soft: #3b0a0a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  header { padding: 18px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 22px; letter-spacing: -.01em; }
+  header span { color: var(--muted); font-size: 13px; }
+  .wrap { display: grid; grid-template-columns: 340px 1fr; gap: 20px; padding: 20px; max-width: 1400px; margin: 0 auto; }
+  @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; padding: 16px; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; display: flex; justify-content: space-between; align-items: center; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 10px 0 4px; }
+  input, select, textarea { width: 100%; font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+  textarea { min-height: 70px; resize: vertical; }
+  .seg { display: grid; grid-template-columns: 1fr; gap: 6px; }
+  .seg label { font-weight: 500; margin: 0; display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+  .seg input { width: auto; margin-top: 3px; }
+  .seg small { display: block; color: var(--muted); font-weight: 400; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 10px 14px; background: var(--accent); color: #fff; cursor: pointer; width: 100%; margin-top: 14px; }
+  button:disabled { opacity: .5; cursor: default; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .err { color: var(--red); font-size: 13px; margin-top: 8px; }
+  details summary { cursor: pointer; font-size: 13px; color: var(--muted); margin-top: 12px; }
+  .hist { list-style: none; margin: 0; padding: 0; }
+  .hist li { padding: 8px 6px; border-top: 1px solid var(--line); cursor: pointer; font-size: 13px; display: flex; gap: 8px; align-items: center; }
+  .hist li:hover, .hist li.on { background: var(--accent-soft); }
+  .hist .t { color: var(--muted); font-size: 12px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; background: var(--line); }
+  .dot.green { background: var(--green); } .dot.yellow { background: var(--yellow); } .dot.red { background: var(--red); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; font-size: 13px; margin: 0; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; font-variant-numeric: tabular-nums; word-break: break-word; }
+  .pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; }
+  .pill.green { color: var(--green); background: var(--green-soft); } .pill.yellow { color: var(--yellow); background: var(--yellow-soft); } .pill.red { color: var(--red); background: var(--red-soft); }
+  .notes { margin: 8px 0 0; padding-left: 18px; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .wide { grid-column: 1 / -1; }
+  .thumb { width: 100%; border-radius: 8px; display: block; background: #000; aspect-ratio: 16/9; object-fit: contain; }
+  .banner { padding: 14px 16px; border-radius: 12px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .banner.green { background: var(--green-soft); } .banner.yellow { background: var(--yellow-soft); } .banner.red { background: var(--red-soft); } .banner.run { background: var(--accent-soft); }
+  .banner b { font-size: 17px; }
+  .spark { width: 100%; height: 70px; display: block; }
+  .empty { color: var(--muted); padding: 40px; text-align: center; }
+  code { font: 12px ui-monospace, Menlo, monospace; }
+  pre { font: 12px ui-monospace, Menlo, monospace; white-space: pre-wrap; margin: 0; max-height: 260px; overflow: auto; }
+  label.chk { display: flex; gap: 8px; align-items: center; font-weight: 500; margin: 8px 0 0; }
+  label.chk input[type=checkbox] { width: auto; }
+  .film { display: flex; gap: 6px; overflow-x: auto; }
+  .film figure { margin: 0; flex: 0 0 auto; text-align: center; }
+  .film img { height: 90px; border-radius: 6px; display: block; }
+  .film figcaption { font-size: 11px; color: var(--muted); }
+  .actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+  .actions a, .actions button { font-size: 13px; font-weight: 600; width: auto; margin: 0; padding: 6px 10px; border-radius: 8px; background: var(--card); color: var(--ink); border: 1px solid var(--line); text-decoration: none; cursor: pointer; }
+  .pass { color: var(--green); font-weight: 700; } .fail { color: var(--red); font-weight: 700; }
+</style>
+</head>
+<body>
+<header><h1>SignalScope</h1><span>Live feed inspector · SRT, MPEG-TS, video, audio, captions, SCTE-35</span><span id="busy"></span></header>
+<div class="wrap">
+  <aside>
+    <form class="card" id="form">
+      <h2>New inspection</h2>
+      <div class="seg" id="kinds">
+        <label><input type="radio" name="kind" value="listen" checked><span>Listen for a sender<small>The partner's encoder sends to <code id="ingest">this server</code> on UDP 9000 (SRT caller).</small></span></label>
+        <label><input type="radio" name="kind" value="srt"><span>Pull from an SRT address<small>Connect out to a sender running as an SRT listener.</small></span></label>
+        <label><input type="radio" name="kind" value="url"><span>Other URL<small>HLS (.m3u8), UDP/RTP multicast, or a full srt:// URL.</small></span></label>
+      </div>
+      <div id="f-srt" hidden>
+        <div class="row"><div><label for="host">Host</label><input id="host" placeholder="encoder.partner.com"></div>
+        <div><label for="port">Port</label><input id="port" type="number" value="9000"></div></div>
+      </div>
+      <div id="f-url" hidden><label for="url">URL</label><input id="url" placeholder="https://…/index.m3u8"></div>
+      <div class="row">
+        <div><label for="seconds">Sample (s)</label><input id="seconds" type="number" value="20" min="5" max="120"></div>
+        <div id="f-lat"><label for="latency">SRT latency (ms)</label><input id="latency" type="number" value="1000" min="20" max="8000"></div>
+      </div>
+      <details id="f-sec" open><summary>SRT security and stream ID</summary>
+        <label for="pass">Passphrase <span class="hint">(leave empty for no encryption)</span></label>
+        <div class="row" style="grid-template-columns:1fr auto"><input id="pass" type="password" autocomplete="off" placeholder="10–79 characters">
+          <button type="button" id="showpass" style="width:auto;margin:0;padding:8px 10px;background:var(--line);color:var(--ink)">Show</button></div>
+        <label for="keylen">Key length</label><select id="keylen"><option value="16">AES-128</option><option value="24">AES-192</option><option value="32">AES-256</option></select>
+        <label for="sid">Stream ID <span class="hint">(optional label some senders require)</span></label><input id="sid">
+      </details>
+      <details open><summary>About the source (optional)</summary>
+        <label for="label">Name</label><input id="label" placeholder="e.g. Partner Sports 1, primary">
+        <label for="notes">Notes</label><textarea id="notes" placeholder="Encoder, spec, contact, anything you know"></textarea>
+      </details>
+      <details id="specbox"><summary>Expected spec (optional pass/fail check)</summary>
+        <div class="row">
+          <div><label for="s-codec">Video codec</label><select id="s-codec"><option value="">any</option><option>H264</option><option>HEVC</option><option>MPEG2VIDEO</option></select></div>
+          <div><label for="s-res">Resolution</label><select id="s-res"><option value="">any</option><option>1920x1080</option><option>1280x720</option><option>720x480</option><option>3840x2160</option></select></div>
+          <div><label for="s-fps">Frame rate</label><select id="s-fps"><option value="">any</option><option value="25">25</option><option value="29.97">29.97</option><option value="50">50</option><option value="59.94">59.94</option></select></div>
+          <div><label for="s-scan">Scan</label><select id="s-scan"><option value="">any</option><option>progressive</option><option>interlaced</option></select></div>
+          <div><label for="s-gop">Max keyframe gap (s)</label><input id="s-gop" type="number" step="0.5" placeholder="2"></div>
+          <div><label for="s-br">Max bitrate (Mbps)</label><input id="s-br" type="number" step="0.5" placeholder="20"></div>
+          <div><label for="s-acodec">Audio codec</label><select id="s-acodec"><option value="">any</option><option>AAC</option><option>AC3</option><option>EAC3</option></select></div>
+          <div><label for="s-lang">Languages</label><input id="s-lang" placeholder="eng, spa"></div>
+          <div><label for="s-loss">Max loss (%)</label><input id="s-loss" type="number" step="0.1" placeholder="0.1"></div>
+        </div>
+        <label class="chk"><input type="checkbox" id="s-cc"> Captions required</label>
+        <label class="chk"><input type="checkbox" id="s-scte"> SCTE-35 required</label>
+        <label class="chk"><input type="checkbox" id="s-enc"> Encryption required</label>
+      </details>
+      <button id="go" type="submit">Inspect</button>
+      <div class="err" id="err"></div>
+    </form>
+    <form class="card" id="gen" style="margin-top:16px">
+      <h2>Test signal</h2>
+      <p class="hint" style="margin-top:-6px">Plays the partner: sends a feed to this server and inspects it, end to end. Uses the expected spec above, if set.</p>
+      <div class="row">
+        <div><label for="g-codec">Codec</label><select id="g-codec"><option>H264</option><option>HEVC</option><option value="MPEG2">MPEG-2</option></select></div>
+        <div><label for="g-size">Size</label><select id="g-size"><option>1080p</option><option>1080i</option><option>720p</option><option>480p</option></select></div>
+        <div><label for="g-fps">Frame rate</label><select id="g-fps"><option>29.97</option><option>59.94</option><option>25</option><option>50</option></select></div>
+        <div><label for="g-br">Video Mbps</label><input id="g-br" type="number" value="6" min="1" max="40"></div>
+        <div><label for="g-gop">Keyframe every (s)</label><input id="g-gop" type="number" value="2" step="0.5" min="0.5" max="10"></div>
+        <div><label for="g-ac">Audio</label><select id="g-ac"><option>AAC</option><option>AC3</option><option>EAC3</option></select></div>
+      </div>
+      <label class="chk"><input type="checkbox" id="g-lang"> Second audio language (Spanish)</label>
+      <label class="chk"><input type="checkbox" id="g-scte" checked> SCTE-35 ad break, <input id="g-ad" type="number" value="8" min="2" max="30" style="width:56px;padding:2px 6px"> s</label>
+      <label class="chk"><input type="checkbox" id="g-black"> Fault: black video at 8–11 s</label>
+      <label class="chk"><input type="checkbox" id="g-silence"> Fault: silent audio at 12–15 s</label>
+      <label for="g-pass">Encrypt with passphrase <span class="hint">(optional)</span></label><input id="g-pass" type="password" autocomplete="off" placeholder="10–79 characters">
+      <button id="g-go" type="submit">Send test signal</button>
+      <div class="err" id="g-err"></div>
+    </form>
+    <div class="card" style="margin-top:16px">
+      <h2>History</h2>
+      <ul class="hist" id="hist"><li class="t">No inspections yet.</li></ul>
+    </div>
+  </aside>
+  <main id="main"><div class="card empty">Start an inspection, or pick one from the history.</div></main>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const fmtBps = (b) => b == null ? "–" : b >= 1e6 ? (b / 1e6).toFixed(2) + " Mbps" : b >= 1e3 ? (b / 1e3).toFixed(0) + " kbps" : b + " bps";
+const dash = (v) => (v == null || v === "") ? "–" : v;
+let current = null, timer = null;
+
+$("ingest").textContent = location.hostname + ":9000";
+function showFields() {
+  const k = document.querySelector("input[name=kind]:checked").value;
+  $("f-srt").hidden = k !== "srt"; $("f-url").hidden = k !== "url";
+  $("f-lat").hidden = $("f-sec").hidden = k === "url";
+}
+document.querySelectorAll("input[name=kind]").forEach((r) => r.addEventListener("change", showFields));
+showFields();
+
+$("form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("err").textContent = "";
+  const kind = document.querySelector("input[name=kind]:checked").value;
+  const body = { kind, seconds: +$("seconds").value, latency_ms: +$("latency").value, key_length: +$("keylen").value,
+    label: $("label").value || undefined, notes: $("notes").value || undefined };
+  if (kind !== "url") { if ($("pass").value) body.passphrase = $("pass").value; if ($("sid").value) body.stream_id = $("sid").value; }
+  if (kind === "srt") { body.host = $("host").value.trim(); body.port = +$("port").value; }
+  if (kind === "url") body.url = $("url").value.trim();
+  const spec = specFromForm();
+  if (spec) body.spec = spec;
+  await submit("/api/inspect", body, $("go"), $("err"));
+});
+
+$("showpass").addEventListener("click", () => {
+  const p = $("pass"); p.type = p.type === "password" ? "text" : "password";
+  $("showpass").textContent = p.type === "password" ? "Show" : "Hide";
+});
+
+function specFromForm() {
+  const num = (id) => $(id).value === "" ? undefined : +$(id).value;
+  const spec = {
+    video_codec: $("s-codec").value || undefined, resolution: $("s-res").value || undefined, fps: num("s-fps"),
+    scan: $("s-scan").value || undefined, keyframe_max_s: num("s-gop"), max_bitrate_mbps: num("s-br"),
+    audio_codec: $("s-acodec").value || undefined, languages: $("s-lang").value.trim() || undefined, max_loss_pct: num("s-loss"),
+    captions_required: $("s-cc").checked, scte35_required: $("s-scte").checked, encryption_required: $("s-enc").checked,
+  };
+  return Object.values(spec).some((v) => v !== undefined && v !== false) ? spec : null;
+}
+
+async function submit(url, body, btn, errEl) {
+  errEl.textContent = ""; btn.disabled = true;
+  try {
+    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : (data.detail?.[0]?.msg || "Please check the fields."));
+    open_(data.id);
+  } catch (err) { errEl.textContent = err.message; }
+  btn.disabled = false;
+  history_();
+}
+
+$("gen").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const body = { codec: $("g-codec").value, size: $("g-size").value, fps: $("g-fps").value, bitrate_mbps: +$("g-br").value,
+    keyframe_s: +$("g-gop").value, audio_codec: $("g-ac").value, second_language: $("g-lang").checked, scte35: $("g-scte").checked,
+    ad_seconds: +$("g-ad").value, black: $("g-black").checked, silence: $("g-silence").checked, key_length: +$("keylen").value };
+  if ($("g-pass").value) body.passphrase = $("g-pass").value;
+  const spec = specFromForm();
+  if (spec) body.spec = spec;
+  await submit("/api/test-signal", body, $("g-go"), $("g-err"));
+});
+
+async function remove_(id) {
+  if (!confirm("Delete this inspection and its recording?")) return;
+  const res = await fetch("/api/jobs/" + id, { method: "DELETE" });
+  if (res.ok) { current = null; $("main").innerHTML = '<div class="card empty">Deleted.</div>'; history_(); }
+}
+
+async function history_() {
+  const items = await (await fetch("/api/jobs")).json();
+  $("hist").innerHTML = items.length ? items.map((j) => `<li data-id="${j.id}" class="${j.id === current ? "on" : ""}">
+    <span class="dot ${j.status === "error" ? "red" : esc(j.health || "")}"></span>
+    <span><b>${esc(j.source?.label || srcText(j.source))}</b><br><span class="t">${esc(j.started ? new Date(j.started).toLocaleString() : "queued")}${j.summary ? " · " + esc(j.summary) : ""}${j.status === "running" ? " · running" : ""}</span></span></li>`).join("")
+    : '<li class="t">No inspections yet.</li>';
+  $("hist").querySelectorAll("li[data-id]").forEach((li) => li.addEventListener("click", () => open_(li.dataset.id)));
+  const st = await (await fetch("/api/status")).json();
+  $("busy").textContent = st.busy ? "● inspecting…" : "";
+}
+
+function srcText(s) {
+  if (!s) return "";
+  return s.kind === "listen" ? "Listen on :9000" : s.kind === "srt" ? `srt://${s.host}:${s.port}` : s.url;
+}
+
+async function open_(id) {
+  current = id; clearTimeout(timer);
+  const r = await (await fetch("/api/jobs/" + id)).json();
+  render(r);
+  if (r.status === "running" || r.status === "queued") timer = setTimeout(() => open_(id), 1000);
+  else history_();
+  document.querySelectorAll("#hist li").forEach((li) => li.classList.toggle("on", li.dataset.id === id));
+}
+
+function kv(rows) { return `<dl class="kv">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}</dl>`; }
+function layer(r, key) { const l = r.health?.layers?.[key]; return l ? `<span class="pill ${l.level}">${l.level === "green" ? "OK" : l.level}</span>` : ""; }
+function notes(r, key) { const n = r.health?.layers?.[key]?.notes || []; return n.length ? `<ul class="notes">${n.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""; }
+
+function spark(points, key, label, unit) {
+  const vals = points.map((p) => p[key]).filter((v) => v != null);
+  if (vals.length < 2) return "";
+  const max = Math.max(...vals) || 1, w = 300, h = 60;
+  const d = vals.map((v, i) => `${(i / (vals.length - 1)) * w},${h - (v / max) * (h - 6) - 3}`).join(" ");
+  return `<div class="hint">${esc(label)} · max ${max.toFixed(1)} ${unit}</div><svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="${esc(label)} over time"><polyline points="${d}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+function render(r) {
+  const src = r.source || {};
+  if (r.status !== "done") {
+    $("main").innerHTML = `<div class="banner ${r.status === "error" ? "red" : "run"}"><b>${esc(r.stage)}</b><span>${esc(src.label || srcText(src))}</span>
+      ${src.kind === "listen" && r.status === "running" && r.stage.startsWith("Waiting") ? `<span class="hint">Point the sender at <code>srt://${esc(location.hostname)}:9000</code> (caller mode).</span>` : ""}
+      ${r.error ? `<span>${esc(r.error)}</span>` : ""}</div>`;
+    return;
+  }
+  const h = r.health, v = r.video || {}, s = r.srt, ts = r.ts, q = r.qc;
+  const timeline = s?.timeline || [];
+  $("main").innerHTML = `
+  <div class="banner ${h.overall}"><b>${h.overall === "green" ? "Healthy feed" : h.overall === "yellow" ? "Feed has warnings" : "Feed has problems"}</b>
+    <span>${esc(src.label || srcText(src))}</span><span class="hint">${esc(new Date(r.started).toLocaleString())} · ${ts.duration_s ?? "?"} s sampled</span>
+    <span class="actions"><a href="/api/jobs/${r.id}/report.json">Download report</a><a href="/api/jobs/${r.id}/sample.ts">Download sample</a><button type="button" onclick="remove_('${r.id}')">Delete</button></span></div>
+  ${r.conformance ? (() => { const fails = r.conformance.filter((c) => !c.pass).length; return `<div class="card" style="margin-bottom:14px"><h3>Spec conformance <span class="pill ${fails ? "red" : "green"}">${fails ? fails + " failed" : "all passed"}</span></h3>
+    <table><tr><th>Check</th><th>Expected</th><th>Actual</th><th>Result</th></tr>${r.conformance.map((c) => `<tr><td>${esc(c.check)}</td><td>${esc(c.expected)}</td><td>${esc(c.actual)}</td><td class="${c.pass ? "pass" : "fail"}">${c.pass ? "PASS" : "FAIL"}</td></tr>`).join("")}</table></div>`; })() : ""}
+  <div class="grid">
+    ${r.thumbnail ? `<div class="card"><h3>Picture</h3><img class="thumb" src="/api/jobs/${r.id}/thumb.jpg" alt="Frame from the feed"></div>` : ""}
+    <div class="card"><h3>Source</h3>${kv([
+      ["Type", esc(srcText(src))], ["Encrypted", src.encrypted ? "yes" : "no"], ["Stream ID", esc(dash(src.stream_id))],
+      ["Notes", esc(dash(src.notes))]])}</div>
+    ${s ? `<div class="card"><h3>SRT link ${layer(r, "link")}</h3>${kv([
+      ["Mode", esc(s.mode)], ["Latency", s.latency_ms + " ms"], ["Encryption", s.encrypted ? "AES-" + s.key_length_bits : "off"],
+      ["Round trip", s.rtt_ms_avg != null ? `${s.rtt_ms_avg} ms avg · ${s.rtt_ms_max} ms max` : "–"],
+      ["Rate", s.mbps_avg != null ? s.mbps_avg + " Mbps avg" : "–"], ["Link estimate", s.bandwidth_mbps_est != null ? s.bandwidth_mbps_est + " Mbps" : "–"],
+      ["Packets", s.packets_received.toLocaleString()], ["Lost", `${s.packets_lost} (${s.loss_pct}%)`],
+      ["Retransmitted", s.packets_retransmitted], ["Dropped (too late)", s.packets_dropped]])}${notes(r, "link")}
+      ${spark(timeline, "mbps", "Bitrate", "Mbps")}${spark(timeline, "rtt", "Round trip", "ms")}</div>` : ""}
+    <div class="card"><h3>Transport stream ${layer(r, "transport")}</h3>${kv([
+      ["Total bitrate", fmtBps(ts.bitrate)], ["TS ID", dash(ts.ts_id)], ["Services", ts.services.map((x) => esc(`${x.name || "?"} (${x.provider || "?"})`)).join(", ") || "–"],
+      ["PMT / PCR PID", ts.services[0] ? `${ts.services[0].pmt_pid} / ${ts.services[0].pcr_pid}` : "–"],
+      ["Continuity errors", ts.continuity_errors], ["Transport errors", ts.transport_errors], ["Lost sync", ts.invalid_syncs],
+      ["PCR clock", r.pcr?.checked ? `${r.pcr.ok.toLocaleString()} OK · ${r.pcr.bad} off by &gt; ${r.pcr.threshold_us} µs` : "–"]])}${notes(r, "transport")}</div>
+    <div class="card"><h3>Video ${layer(r, "video")}</h3>${r.video ? kv([
+      ["Codec", esc(`${v.codec} ${v.profile || ""}${v.level ? " · level " + (v.level / 10).toFixed(1) : ""}`)],
+      ["Resolution", esc(v.resolution) + (v.aspect ? ` (${esc(v.aspect)})` : "")], ["Frame rate", esc(dash(v.fps_label))], ["Scan", esc(v.scan)],
+      ["Keyframes", v.keyframe_interval_s ? `every ${v.keyframe_interval_s} s${v.keyframe_interval_regular ? " (regular)" : " (irregular)"}` : "–"],
+      ["Bit depth / format", `${v.bit_depth}-bit · ${esc(v.pix_fmt)}`], ["Dynamic range", esc(v.hdr)],
+      ["Color", esc([v.color_primaries, v.color_transfer, v.color_space].filter(Boolean).join(" / ") || "–")], ["B-frames", v.has_b_frames ? "yes" : "no"]]) : "No video stream."}${notes(r, "video")}</div>
+    <div class="card"><h3>Audio ${layer(r, "audio")}</h3>${(r.audio || []).length ? `<table><tr><th>PID</th><th>Codec</th><th>Channels</th><th>Rate</th><th>Bitrate</th><th>Lang</th></tr>${r.audio.map((a) => `<tr>
+      <td>${dash(a.pid)}</td><td>${esc(a.codec)}${a.profile ? " " + esc(a.profile) : ""}</td><td>${esc(a.layout || a.channels)}</td><td>${a.sample_rate ? a.sample_rate / 1000 + " kHz" : "–"}</td><td>${fmtBps(a.bitrate)}</td><td>${esc(dash(a.language))}</td></tr>`).join("")}</table>` : "No audio."}
+      ${kv([["Loudness", q.loudness_lufs != null ? `${q.loudness_lufs} LUFS (range ${q.loudness_range_lu} LU)` : "–"], ["True peak", q.true_peak_dbfs != null ? q.true_peak_dbfs + " dBFS" : "–"]])}${notes(r, "audio")}</div>
+    <div class="card"><h3>Captions ${layer(r, "captions")}</h3>${kv([["CEA-608/708", r.captions.cea608_708 ? "present" : "not found"],
+      ["Subtitle streams", r.captions.subtitle_streams.map((x) => esc(`${x.codec} ${x.language || ""}`)).join(", ") || "none"]])}${notes(r, "captions")}</div>
+    <div class="card"><h3>SCTE-35 ad &amp; blackout markers</h3>${kv([["Marker PID", r.scte35.pids.join(", ") || "none"], ["Markers seen", r.scte35.events.length],
+      ["Unmatched breaks", (r.scte35.unpaired_outs || []).join(", ") || "none"]])}
+      ${r.scte35.events.length ? `<table style="margin-top:8px"><tr><th>Event</th><th>Command</th><th>Direction</th><th>Duration</th><th>Timing</th></tr>${r.scte35.events.map((e) => `<tr>
+        <td>${dash(e.event_id)}</td><td>${esc(e.command)}</td><td>${esc(e.cancel ? "cancel" : dash(e.direction))}</td>
+        <td>${e.duration_s != null ? e.duration_s + " s" + (e.auto_return ? " (auto-return)" : "") : "–"}</td><td>${e.immediate ? "immediate" : e.pts_time != null ? "PTS " + e.pts_time : "–"}</td></tr>
+        ${e.segmentation.map((sg) => `<tr><td></td><td colspan="4" class="hint">Segmentation type ${dash(sg.type)} · event ${dash(sg.event_id)}${sg.duration_s ? " · " + sg.duration_s + " s" : ""}${sg.upid ? " · UPID " + esc(JSON.stringify(sg.upid)) : ""}</td></tr>`).join("")}`).join("")}</table>`
+        : `<p class="hint">${r.scte35.present ? "Marker stream present, no markers during the sample." : "No SCTE-35 stream in this feed."}</p>`}</div>
+    <div class="card"><h3>Picture &amp; sound checks ${layer(r, "quality")}</h3>${kv([
+      ["Black video", q.black.length ? q.black.map((x) => `${x.start}s for ${x.duration}s`).join(", ") : "none"],
+      ["Frozen video", q.freeze.length ? q.freeze.map((x) => `${x.start}s for ${x.duration}s`).join(", ") : "none"],
+      ["Silence", q.silence.length ? q.silence.map((x) => `${x.start}s for ${x.duration}s`).join(", ") : "none"]])}${notes(r, "quality")}</div>
+    ${r.film ? `<div class="card wide"><h3>Filmstrip (every 3 s)</h3><div class="film">${Array.from({ length: r.film }, (_, i) =>
+      `<figure><img src="/api/jobs/${r.id}/film/${i + 1}.jpg" alt="Frame at ${i * 3} seconds" loading="lazy"><figcaption>${i * 3}s</figcaption></figure>`).join("")}</div></div>` : ""}
+    <div class="card wide"><h3>PIDs</h3><table><tr><th>PID</th><th>Hex</th><th>Contents</th><th class="num">Bitrate</th><th class="num">Packets</th><th class="num">Continuity errors</th></tr>
+      ${ts.pids.map((p) => `<tr><td>${p.pid}</td><td><code>${p.hex}</code></td><td>${esc(p.description)}${p.scrambled ? " (scrambled)" : ""}</td><td class="num">${fmtBps(p.bitrate)}</td><td class="num">${p.packets.toLocaleString()}</td><td class="num">${p.discontinuities}</td></tr>`).join("")}</table></div>
+  </div>`;
+}
+
+history_();
+setInterval(history_, 5000);
+</script>
+</body>
+</html>
