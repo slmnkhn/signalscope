@@ -1,8 +1,11 @@
 """Web interface: start an inspection or a test signal, watch it run, read and download the report."""
 
+import ipaddress
 import re
+import socket
 import threading
 import time
+import urllib.parse
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -73,14 +76,32 @@ def _check_srt(passphrase: str | None, key_length: int) -> None:
         raise HTTPException(400, "Key length must be 16, 24 or 32 bytes.")
 
 
+def _public_host(host: str) -> None:
+    """Refuses hosts that resolve to this server, private networks or cloud metadata, so a public page
+    can't be used to reach anything internal."""
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        raise HTTPException(400, f"Can't find the host {host}.")
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if not ip.is_global or ip.is_multicast:
+            raise HTTPException(400, "That address isn't allowed: only public internet addresses can be inspected.")
+
+
 def _check(src: Source) -> dict:
     _check_srt(src.passphrase, src.key_length)
     if src.kind == "srt":
         if not src.host or not re.fullmatch(r"[A-Za-z0-9.\-:]+", src.host):
             raise HTTPException(400, "Enter the SRT host as a name or IP address.")
+        _public_host(src.host)
     if src.kind == "url":
-        if not src.url or not re.match(r"^(https?|udp|rtp|srt)://", src.url):
-            raise HTTPException(400, "The URL must start with http(s)://, udp://, rtp:// or srt://.")
+        if not src.url or not re.match(r"^(https?|srt)://", src.url):
+            raise HTTPException(400, "The URL must start with http://, https:// or srt://.")
+        host = urllib.parse.urlsplit(src.url).hostname
+        if not host:
+            raise HTTPException(400, "That URL has no host.")
+        _public_host(host)
     if src.kind == "listen" and src.port != 9000:
         raise HTTPException(400, "Listening is only open on port 9000 (the firewall allows nothing else).")
     out = src.model_dump(exclude_none=True)

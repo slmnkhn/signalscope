@@ -133,7 +133,8 @@ def _record(folder: Path, source: dict, report: dict):
     url = source["url"]
     _stage(folder, report, f"Recording {seconds} s")
     result = subprocess.run(
-        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-rw_timeout", "15000000", "-i", url,
+        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-rw_timeout", "15000000",
+         "-protocol_whitelist", "http,https,tcp,tls,crypto,hls,srt", "-i", url,
          "-t", str(seconds), "-map", "0", "-c", "copy", "-f", "mpegts", str(sample)],
         capture_output=True, text=True, timeout=seconds + 90,
     )

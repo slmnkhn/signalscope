@@ -87,7 +87,7 @@
       <div class="seg" id="kinds">
         <label><input type="radio" name="kind" value="listen" checked><span>Listen for a sender<small>The partner's encoder sends to <code id="ingest">this server</code> on UDP 9000 (SRT caller).</small></span></label>
         <label><input type="radio" name="kind" value="srt"><span>Pull from an SRT address<small>Connect out to a sender running as an SRT listener.</small></span></label>
-        <label><input type="radio" name="kind" value="url"><span>Other URL<small>HLS (.m3u8), UDP/RTP multicast, or a full srt:// URL.</small></span></label>
+        <label><input type="radio" name="kind" value="url"><span>Other URL<small>An HLS playlist (.m3u8) or a full srt:// URL.</small></span></label>
       </div>
       <div id="f-srt" hidden>
         <div class="row"><div><label for="host">Host</label><input id="host" placeholder="encoder.partner.com"></div>
@@ -181,7 +181,7 @@ $("form").addEventListener("submit", async (e) => {
   if (kind === "url") body.url = $("url").value.trim();
   const spec = specFromForm();
   if (spec) body.spec = spec;
-  await submit("/api/inspect", body, $("go"), $("err"));
+  await submit("api/inspect", body, $("go"), $("err"));
 });
 
 $("showpass").addEventListener("click", () => {
@@ -220,23 +220,23 @@ $("gen").addEventListener("submit", async (e) => {
   if ($("g-pass").value) body.passphrase = $("g-pass").value;
   const spec = specFromForm();
   if (spec) body.spec = spec;
-  await submit("/api/test-signal", body, $("g-go"), $("g-err"));
+  await submit("api/test-signal", body, $("g-go"), $("g-err"));
 });
 
 async function remove_(id) {
   if (!confirm("Delete this inspection and its recording?")) return;
-  const res = await fetch("/api/jobs/" + id, { method: "DELETE" });
+  const res = await fetch("api/jobs/" + id, { method: "DELETE" });
   if (res.ok) { current = null; $("main").innerHTML = '<div class="card empty">Deleted.</div>'; history_(); }
 }
 
 async function history_() {
-  const items = await (await fetch("/api/jobs")).json();
+  const items = await (await fetch("api/jobs")).json();
   $("hist").innerHTML = items.length ? items.map((j) => `<li data-id="${j.id}" class="${j.id === current ? "on" : ""}">
     <span class="dot ${j.status === "error" ? "red" : esc(j.health || "")}"></span>
     <span><b>${esc(j.source?.label || srcText(j.source))}</b><br><span class="t">${esc(j.started ? new Date(j.started).toLocaleString() : "queued")}${j.summary ? " · " + esc(j.summary) : ""}${j.status === "running" ? " · running" : ""}</span></span></li>`).join("")
     : '<li class="t">No inspections yet.</li>';
   $("hist").querySelectorAll("li[data-id]").forEach((li) => li.addEventListener("click", () => open_(li.dataset.id)));
-  const st = await (await fetch("/api/status")).json();
+  const st = await (await fetch("api/status")).json();
   $("busy").textContent = st.busy ? "● inspecting…" : "";
 }
 
@@ -247,7 +247,7 @@ function srcText(s) {
 
 async function open_(id) {
   current = id; clearTimeout(timer);
-  const r = await (await fetch("/api/jobs/" + id)).json();
+  const r = await (await fetch("api/jobs/" + id)).json();
   render(r);
   if (r.status === "running" || r.status === "queued") timer = setTimeout(() => open_(id), 1000);
   else history_();
@@ -279,11 +279,11 @@ function render(r) {
   $("main").innerHTML = `
   <div class="banner ${h.overall}"><b>${h.overall === "green" ? "Healthy feed" : h.overall === "yellow" ? "Feed has warnings" : "Feed has problems"}</b>
     <span>${esc(src.label || srcText(src))}</span><span class="hint">${esc(new Date(r.started).toLocaleString())} · ${ts.duration_s ?? "?"} s sampled</span>
-    <span class="actions"><a href="/api/jobs/${r.id}/report.json">Download report</a><a href="/api/jobs/${r.id}/sample.ts">Download sample</a><button type="button" onclick="remove_('${r.id}')">Delete</button></span></div>
+    <span class="actions"><a href="api/jobs/${r.id}/report.json">Download report</a><a href="api/jobs/${r.id}/sample.ts">Download sample</a><button type="button" onclick="remove_('${r.id}')">Delete</button></span></div>
   ${r.conformance ? (() => { const fails = r.conformance.filter((c) => !c.pass).length; return `<div class="card" style="margin-bottom:14px"><h3>Spec conformance <span class="pill ${fails ? "red" : "green"}">${fails ? fails + " failed" : "all passed"}</span></h3>
     <table><tr><th>Check</th><th>Expected</th><th>Actual</th><th>Result</th></tr>${r.conformance.map((c) => `<tr><td>${esc(c.check)}</td><td>${esc(c.expected)}</td><td>${esc(c.actual)}</td><td class="${c.pass ? "pass" : "fail"}">${c.pass ? "PASS" : "FAIL"}</td></tr>`).join("")}</table></div>`; })() : ""}
   <div class="grid">
-    ${r.thumbnail ? `<div class="card"><h3>Picture</h3><img class="thumb" src="/api/jobs/${r.id}/thumb.jpg" alt="Frame from the feed"></div>` : ""}
+    ${r.thumbnail ? `<div class="card"><h3>Picture</h3><img class="thumb" src="api/jobs/${r.id}/thumb.jpg" alt="Frame from the feed"></div>` : ""}
     <div class="card"><h3>Source</h3>${kv([
       ["Type", esc(srcText(src))], ["Encrypted", src.encrypted ? "yes" : "no"], ["Stream ID", esc(dash(src.stream_id))],
       ["Notes", esc(dash(src.notes))]])}</div>
@@ -322,7 +322,7 @@ function render(r) {
       ["Frozen video", q.freeze.length ? q.freeze.map((x) => `${x.start}s for ${x.duration}s`).join(", ") : "none"],
       ["Silence", q.silence.length ? q.silence.map((x) => `${x.start}s for ${x.duration}s`).join(", ") : "none"]])}${notes(r, "quality")}</div>
     ${r.film ? `<div class="card wide"><h3>Filmstrip (every 3 s)</h3><div class="film">${Array.from({ length: r.film }, (_, i) =>
-      `<figure><img src="/api/jobs/${r.id}/film/${i + 1}.jpg" alt="Frame at ${i * 3} seconds" loading="lazy"><figcaption>${i * 3}s</figcaption></figure>`).join("")}</div></div>` : ""}
+      `<figure><img src="api/jobs/${r.id}/film/${i + 1}.jpg" alt="Frame at ${i * 3} seconds" loading="lazy"><figcaption>${i * 3}s</figcaption></figure>`).join("")}</div></div>` : ""}
     <div class="card wide"><h3>PIDs</h3><table><tr><th>PID</th><th>Hex</th><th>Contents</th><th class="num">Bitrate</th><th class="num">Packets</th><th class="num">Continuity errors</th></tr>
       ${ts.pids.map((p) => `<tr><td>${p.pid}</td><td><code>${p.hex}</code></td><td>${esc(p.description)}${p.scrambled ? " (scrambled)" : ""}</td><td class="num">${fmtBps(p.bitrate)}</td><td class="num">${p.packets.toLocaleString()}</td><td class="num">${p.discontinuities}</td></tr>`).join("")}</table></div>
   </div>`;
